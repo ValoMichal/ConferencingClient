@@ -1,0 +1,47 @@
+﻿<Window x:Class="ConferencingClient.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ConferencingClient"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800">
+    <DockPanel>
+        <DockPanel DockPanel.Dock="Right">
+            <Button Content="⚙" DockPanel.Dock="Bottom" Click="HideSettings"/>
+            <Button Content="🗨" Click="HideChat"/>
+        </DockPanel>
+        <DockPanel>
+            <DockPanel x:Name="Settings" DockPanel.Dock="Bottom" HorizontalAlignment="Stretch">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" DockPanel.Dock="Left">
+                    <TextBlock Text="Name: "/>
+                    <TextBox Text="User" x:Name="Username" MinWidth="100"/>
+                    <Button Content="Confirm"/>
+                    <TextBlock Text=" "/>
+                    <Button Content="Host" Click="Host"/>
+                    <TextBlock Text=" or IP:"/>
+                    <TextBox Name="ip" Text="" MinWidth="100" KeyDown="ConnectEnter"/>
+                    <Button Content="Connect" Click="Connect"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
+                    <TextBlock Text="Switch source:"/>
+                    <Button Content="Cam" Click="SwitchCam"/>
+                    <Button Content="Mic" Click="SwitchMic"/>
+                    <TextBlock Text=" | Mute:"/>
+                    <Button Content="Cam" x:Name="Cam" Click="MuteCam"/>
+                    <Button Content="Mic" x:Name="Mic" Click="MuteMic"/>
+                </StackPanel>
+            </DockPanel>
+            <DockPanel x:Name="ChatPanel" DockPanel.Dock="Right" Width="200">
+                <DockPanel DockPanel.Dock="Bottom">
+                    <Button Content="Send" Click="ChatUp" DockPanel.Dock="Right"/>
+                    <TextBox Name="Msg" KeyDown="ChatUpEnter"/>
+                </DockPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Disabled" x:Name="scrollViewer">
+                    <StackPanel x:Name="Chat" VerticalAlignment="Bottom"/>
+                </ScrollViewer>
+            </DockPanel>
+            <Image x:Name="Display" DockPanel.Dock="Left" Stretch="Uniform"/>
+        </DockPanel>        
+    </DockPanel>
+</Window>
