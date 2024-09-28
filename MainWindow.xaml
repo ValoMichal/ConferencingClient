@@ -1,4 +1,4 @@
-﻿<Window x:Class="ConferencingClient.MainWindow"
+<Window x:Class="ConferencingClient.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -14,22 +14,20 @@
         <DockPanel>
             <DockPanel x:Name="Settings" DockPanel.Dock="Bottom" HorizontalAlignment="Stretch">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" DockPanel.Dock="Left">
-                    <TextBlock Text="Name: "/>
+                    <TextBlock Text=" Name: "/>
                     <TextBox Text="User" x:Name="Username" MinWidth="100"/>
-                    <Button Content="Confirm"/>
-                    <TextBlock Text=" "/>
-                    <Button Content="Host" Click="Host"/>
-                    <TextBlock Text=" or IP:"/>
+                    <Button Content="Change" Click="ChangeName"/>
+                    <TextBlock Text=" Server IP:"/>
                     <TextBox Name="ip" Text="" MinWidth="100" KeyDown="ConnectEnter"/>
                     <Button Content="Connect" Click="Connect"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
-                    <TextBlock Text="Switch source:"/>
-                    <Button Content="Cam" Click="SwitchCam"/>
-                    <Button Content="Mic" Click="SwitchMic"/>
-                    <TextBlock Text=" | Mute:"/>
-                    <Button Content="Cam" x:Name="Cam" Click="MuteCam"/>
-                    <Button Content="Mic" x:Name="Mic" Click="MuteMic"/>
+                    <TextBlock Text="📷"/>
+                    <Button Content="✖" x:Name="Cam" Click="MuteCam"/>
+                    <Button Content="🔁" Click="SwitchCam"/>
+                    <TextBlock Text="🎤"/>
+                    <Button Content="✖" x:Name="Mic" Click="MuteMic"/>
+                    <Button Content="🔁" Click="SwitchMic"/>
                 </StackPanel>
             </DockPanel>
             <DockPanel x:Name="ChatPanel" DockPanel.Dock="Right" Width="200">
