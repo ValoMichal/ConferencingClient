@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualBasic;
+using Microsoft.VisualBasic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
@@ -52,8 +52,8 @@ namespace ConferencingClient
     {
         private int camNum = 0;
         private int micNum = 0;
-        private static bool camMute = true;
-        private static bool micMute = true;
+        private static bool camMute = false;
+        private static bool micMute = false;
         private static WaveInEvent waveIn;
         private static WaveOutEvent waveOut;
         private static BufferedWaveProvider waveProvider;
@@ -62,18 +62,16 @@ namespace ConferencingClient
         private FilterInfoCollection videoDevices;
         private VideoCaptureDevice videoSource;
         private static int chunkSize = 65000;
-        private int id = 1;
-        private String name = new String("User");
-        private static List<string> users = new List<string>();
+        private int id = 0;
+        private String server = new String("");
         private static IPEndPoint peer = new IPEndPoint(IPAddress.Any, 0);
         UdpClient connect = new UdpClient(5000);
         UdpClient portChatUp = new UdpClient(5001);
         UdpClient portAudioUp = new UdpClient(5002);
         UdpClient portVideoUp = new UdpClient(5003);
-        private String myIP = new String("");
-        //UdpClient portChatDown = new UdpClient(5004);
-        //UdpClient portAudioDown = new UdpClient(5005);
-        //UdpClient portVideoDown = new UdpClient(5006);
+        UdpClient portChatDown = new UdpClient(5004);
+        UdpClient portAudioDown = new UdpClient(5005);
+        UdpClient portVideoDown = new UdpClient(5006);
         public MainWindow()
         {
             InitializeComponent();
@@ -142,11 +140,11 @@ namespace ConferencingClient
             camMute = !camMute;
             if (camMute)
             {
-                Cam.Background = System.Windows.Media.Brushes.LightGray;
+                Cam.Background = System.Windows.Media.Brushes.Red;
             }
             else
             {
-                Cam.Background = System.Windows.Media.Brushes.Green;
+                Cam.Background = System.Windows.Media.Brushes.LightGray;
             }
         }
         private void MuteMic(object sender, EventArgs e)
@@ -154,11 +152,11 @@ namespace ConferencingClient
             micMute = !micMute;
             if (micMute)
             {
-                Mic.Background = System.Windows.Media.Brushes.LightGray;
+                Mic.Background = System.Windows.Media.Brushes.Red;
             }
             else
             {
-                Mic.Background = System.Windows.Media.Brushes.Green;
+                Mic.Background = System.Windows.Media.Brushes.LightGray;
             }
         }
         private void InitializeCamera()
@@ -184,7 +182,7 @@ namespace ConferencingClient
         private void VideoSource_NewFrame(object sender, AForge.Video.NewFrameEventArgs eventArgs)
         {
             //
-            if (users.Count == 0)
+            if (server.Equals(""))
             {
                 if (camMute)
                 {
@@ -270,51 +268,29 @@ namespace ConferencingClient
         }
         private void Connect(object sender, RoutedEventArgs e)
         {
-            name = Username.Text;
             Settings.Visibility = Visibility.Collapsed;
+            server = ip.Text;
             Task.Run(() =>
             {
-                this.Dispatcher.Invoke(() =>
-                {
-                    users.Add(ip.Text);
-                });
-                //connect.Connect(users[users.Count-1], 5000);
-                //while (true)
-                //{
                 try
                 {
-                    string sendThis = string.Join(Environment.NewLine, users);
-                    byte[] output = Encoding.ASCII.GetBytes(sendThis);
-                    connect.Send(output, output.Length, users[0], 5000);
+                    List<String> output = new List<String>();
+                    output.Add("connect");
+                    output.Add(Username.Text);
+                    string sendText = string.Join(Environment.NewLine, output);
+                    byte[] sendBytes = Encoding.ASCII.GetBytes(sendText);
+                    connect.Send(sendBytes, sendBytes.Length, server, 5000);
+                    output.Clear();
                     //connect.Client.ReceiveTimeout = 2500;
-                    byte[] data = connect.Receive(ref peer);
-                    string dataText = Encoding.ASCII.GetString(data);
-                    List<string> receivedList = new List<string>(dataText.Split(new[] { Environment.NewLine }, StringSplitOptions.None));
-                    id = receivedList.Count;
-                    if (users.Count < 2)
-                    {
-                        users[0] = receivedList[receivedList.Count - 1];
-                    }
-                    for (int i = 0; i < receivedList.Count; i++)
-                    {
-                        for (int j = 0; j < users.Count; j++)
-                        {
-                            if (receivedList[i].Equals(users[j]))
-                            {
-                                i++;
-                                j = 0;
-                            }
-                        }
-                        users.Add(receivedList[i]);
-                    }
-                    //id = Int32.Parse(dataText);
+                    byte[] recvBytes = connect.Receive(ref peer);
+                    string recvText = Encoding.ASCII.GetString(recvBytes);
+                    List<string> input = new List<string>(recvText.Split(new[] { Environment.NewLine }, StringSplitOptions.None));
+                    id = Int32.Parse(input[0]);
                     //peer.Port.ToString()
                     this.Dispatcher.Invoke(() =>
                     {
                         ChatAdd(sender, e, "Connected.");
                     });
-                    //ked sa konektnem nejdemi nic down 
-                    //break;
                 }
                 catch (Exception ex)
                 {
@@ -325,56 +301,6 @@ namespace ConferencingClient
                 Task.Run(() => VideoDown(null, null));
                 Task.Run(() => AudioDown(null, null));
                 Task.Run(() => ChatDown(null, null));
-                //}
-            });
-        }
-        private void Host(object sender, RoutedEventArgs e)
-        {
-            name = Username.Text;
-            //Connection.Visibility = Visibility.Collapsed;
-            Task.Run(() =>
-            {
-                while (true)
-                {
-                    try
-                    {
-                        byte[] data = connect.Receive(ref peer);
-                        string dataText = Encoding.ASCII.GetString(data);
-                        List<string> receivedList = new List<string>(dataText.Split(new[] { Environment.NewLine }, StringSplitOptions.None));
-                        for (int i = 0; i < receivedList.Count; i++)
-                        {
-                            for (int j = 0; j < users.Count; j++)
-                            {
-                                if (receivedList[i].Equals(users[j]))
-                                {
-                                    i++;
-                                    j = 0;
-                                }
-                            }
-                            users.Add(receivedList[i]);
-                        }
-                        users.Add(peer.Address.ToString());
-                        //connect.Connect(users[users.Count - 1], 5001 + users.Count * 3);
-                        string sendThis = string.Join(Environment.NewLine, users);
-                        byte[] output = Encoding.ASCII.GetBytes(sendThis);
-                        for (int i = 1; i < users.Count; i++)
-                        {
-                            connect.Send(output, output.Length, users[i], 5000);
-                        }
-                        Debug.WriteLine(users.Count.ToString());
-                        this.Dispatcher.Invoke(() =>
-                        {
-                            ChatAdd(sender, e, "connected.");
-                        });
-                        Task.Run(() => VideoDown(null, null));
-                        Task.Run(() => AudioDown(null, null));
-                        Task.Run(() => ChatDown(null, null));
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine(ex.Message);
-                    }
-                }
             });
         }
         private void ChatUpEnter(object sender, System.Windows.Input.KeyEventArgs e)
@@ -385,6 +311,14 @@ namespace ConferencingClient
                 e.Handled = true;
             }
         }
+        private void ChangeNameEnter(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter || e.Key == System.Windows.Input.Key.Return)
+            {
+                ChangeName(null, null);
+                e.Handled = true;
+            }
+        }
         private void ConnectEnter(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == System.Windows.Input.Key.Enter || e.Key == System.Windows.Input.Key.Return)
@@ -392,6 +326,16 @@ namespace ConferencingClient
                 Connect(null, null);
                 e.Handled = true;
             }
+        }
+        private void ChangeName(object sender, RoutedEventArgs e)
+        {
+            List<String> output = new List<String>();
+            output.Add("changeName");
+            output.Add(Username.Text);
+            string sendText = string.Join(Environment.NewLine, output);
+            byte[] sendBytes = Encoding.ASCII.GetBytes(sendText);
+            connect.Send(sendBytes, sendBytes.Length, server, 5000);
+            output.Clear();
         }
         private void ChatAdd(object sender, RoutedEventArgs e, String msg)
         {
@@ -409,14 +353,10 @@ namespace ConferencingClient
         {
             try
             {
-                string sendThis = name + ": " + Msg.Text;
-                ChatAdd(sender, e, sendThis);
+                string sendText = Msg.Text;
                 Msg.Text = "";
-                byte[] output = Encoding.ASCII.GetBytes(sendThis);
-                for (int i = 1; i < users.Count; i++)
-                {
-                    portChatUp.Send(output, output.Length, users[i], 5001 + 3 * i);
-                }
+                byte[] sendBytes = Encoding.ASCII.GetBytes(sendText);
+                portChatUp.Send(sendBytes, sendBytes.Length, server, 5001 + 3 * id);
             }
             catch (Exception ex)
             {
@@ -443,15 +383,9 @@ namespace ConferencingClient
         private async void WaveIn_DataAvailable(object sender, WaveInEventArgs e, UdpClient port)
         {
             byte[] opusEncoded = EncodeAudioToOpus(e.Buffer, e.BytesRecorded);
-            var tasks = new List<Task>();
             if (!micMute && opusEncoded != null)
             {
-                for (int i = 1; i < users.Count; i++)
-                {
-                    tasks.Add(port.SendAsync(opusEncoded, opusEncoded.Length, users[i], 5002 + 3 * i));
-                    //port.Send(e.Buffer, e.BytesRecorded, users[i], 5002 + 3 * i);
-                }
-                await Task.WhenAll(tasks);
+                port.Send(e.Buffer, e.BytesRecorded, server, 5002 + 3 * id);
             }
         }
         private static byte[] EncodeAudioToOpus(byte[] pcmData, int bytesRecorded)
@@ -514,10 +448,7 @@ namespace ConferencingClient
                     Array.Copy(buffer, i * chunkSize, chunk, 4, currentChunkSize);
                     try
                     {
-                        for (int j = 0; j < users.Count; j++)
-                        {
-                            portVideoUp.Send(chunk, chunk.Length, users[j], 5003 + 3 * j);
-                        }
+                        portVideoUp.Send(chunk, chunk.Length, server, 5003 + 3 * id);
                     }
                     catch (Exception ex)
                     {
@@ -528,17 +459,15 @@ namespace ConferencingClient
         }
         private void ChatDown(object sender, RoutedEventArgs e)
         {
-            int thisID = users.Count;
-            UdpClient port = new UdpClient(5001 + 3 * (thisID - 1));
             while (true)
             {
                 try
                 {
-                    byte[] data = port.Receive(ref peer);
-                    string dataText = Encoding.ASCII.GetString(data);
+                    byte[] recvBytes = portChatDown.Receive(ref peer);
+                    string recvText = Encoding.ASCII.GetString(recvBytes);
                     this.Dispatcher.Invoke(() =>
                     {
-                        ChatAdd(sender, e, dataText);
+                        ChatAdd(sender, e, recvText);
                     });
                 }
                 catch (Exception ex)
@@ -550,8 +479,6 @@ namespace ConferencingClient
         private void AudioDown(object sender, RoutedEventArgs e)
         {
             opusDecoder = new OpusDecoder(48000, 1);
-            int thisID = users.Count;
-            UdpClient port = new UdpClient(5002 + 3 * (thisID - 1));
             waveProvider = new BufferedWaveProvider(new WaveFormat(48000, 16, 1))
             {
                 BufferDuration = TimeSpan.FromSeconds(5)
@@ -559,7 +486,7 @@ namespace ConferencingClient
             waveOut = new WaveOutEvent();
             waveOut.Init(waveProvider);
             waveOut.Play();
-            StartReceiving(port);
+            StartReceiving(portAudioDown);
         }
 
         private static void StartReceiving(UdpClient port)
@@ -595,7 +522,7 @@ namespace ConferencingClient
             StartReceiving(port);
         }
         */
-
+        
         private static short[] DecodeOpusToPCM(byte[] encodedData)
         {
             // Create a buffer to hold the decoded PCM data
@@ -617,12 +544,10 @@ namespace ConferencingClient
         }
         private void VideoDown(object sender, RoutedEventArgs e)
         {
-            int thisID = users.Count;
-            UdpClient port = new UdpClient(5003 + 3 * (thisID - 1));
             Dictionary<int, byte[]> receivedChunks = new Dictionary<int, byte[]>();
             try
             {
-                byte[] data = port.Receive(ref peer);
+                byte[] data = portVideoDown.Receive(ref peer);
                 int chunkIndex = BitConverter.ToInt32(data, 0);
                 byte[] chunkData = new byte[data.Length - 4];
                 Array.Copy(data, 4, chunkData, 0, chunkData.Length);
@@ -630,7 +555,7 @@ namespace ConferencingClient
                 //Debug.WriteLine($"received chunk {chunkIndex}");
                 while (true)
                 {
-                    data = port.Receive(ref peer);
+                    data = portVideoDown.Receive(ref peer);
                     chunkIndex = BitConverter.ToInt32(data, 0);
                     if (chunkIndex == 0)
                     {
