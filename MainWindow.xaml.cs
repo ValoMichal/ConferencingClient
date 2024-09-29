@@ -45,6 +45,7 @@ using NAudio.Wave.SampleProviders;
 using Concentus;
 using Concentus.Structs;
 using Concentus.Enums;
+using Microsoft.VisualBasic.ApplicationServices;
 
 namespace ConferencingClient
 {
@@ -203,6 +204,7 @@ namespace ConferencingClient
                     this.Dispatcher.Invoke(() =>
                     {
                         Display.Source = Utils.BitmapToImageSource(newFrame);
+                        Environment.Exit(Environment.ExitCode);
                     });
                 }
             }
@@ -336,6 +338,7 @@ namespace ConferencingClient
             byte[] sendBytes = Encoding.ASCII.GetBytes(sendText);
             connect.Send(sendBytes, sendBytes.Length, server, 5000);
             output.Clear();
+            connect.Receive(ref peer);
         }
         private void ChatAdd(object sender, RoutedEventArgs e, String msg)
         {
@@ -365,7 +368,6 @@ namespace ConferencingClient
         }
         private void AudioUp(object sender, RoutedEventArgs e)
         {
-            opusEncoder = new OpusEncoder(48000, 1, OpusApplication.OPUS_APPLICATION_AUDIO);
             if (waveIn != null)
             {
                 waveIn.Dispose();
@@ -373,51 +375,17 @@ namespace ConferencingClient
             waveIn = new WaveInEvent
             {
                 DeviceNumber = micNum,
-                WaveFormat = new WaveFormat(48000, 16, 1),
-                BufferMilliseconds = 20
+                WaveFormat = new WaveFormat(44100, 16, 1)
             };
             waveIn.DataAvailable += (sender, e) => WaveIn_DataAvailable(sender, e, portAudioUp);
             waveIn.StartRecording();
 
         }
-        private async void WaveIn_DataAvailable(object sender, WaveInEventArgs e, UdpClient port)
+        private void WaveIn_DataAvailable(object sender, WaveInEventArgs e, UdpClient port)
         {
-            byte[] opusEncoded = EncodeAudioToOpus(e.Buffer, e.BytesRecorded);
-            if (!micMute && opusEncoded != null)
+            if (!micMute&&!server.Equals(""))
             {
                 port.Send(e.Buffer, e.BytesRecorded, server, 5002 + 3 * id);
-            }
-        }
-        private static byte[] EncodeAudioToOpus(byte[] pcmData, int bytesRecorded)
-        {
-            // Convert PCM bytes to short samples (assuming 16-bit PCM format)
-            short[] pcmSamples = new short[bytesRecorded / 2]; // 2 bytes per sample
-            Buffer.BlockCopy(pcmData, 0, pcmSamples, 0, bytesRecorded);
-
-            // Create a buffer to hold the Opus-encoded data
-            byte[] opusEncoded = new byte[pcmSamples.Length]; // Typically smaller than PCM size
-            int encodedBytes = 0;
-            if (pcmSamples.Length != 0)
-            {
-                try
-                {
-                    encodedBytes = opusEncoder.Encode(pcmSamples, 0, pcmSamples.Length, opusEncoded, 0, opusEncoded.Length);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine(ex.ToString());
-                }
-            }
-
-            if (encodedBytes > 0)
-            {
-                // Return only the encoded bytes
-                return opusEncoded.Take(encodedBytes).ToArray();
-            }
-            else
-            {
-                Console.WriteLine("Failed to encode audio.");
-                return null;
             }
         }
         private void VideoUp(object sender, AForge.Video.NewFrameEventArgs eventArgs)
@@ -478,38 +446,12 @@ namespace ConferencingClient
         }
         private void AudioDown(object sender, RoutedEventArgs e)
         {
-            opusDecoder = new OpusDecoder(48000, 1);
-            waveProvider = new BufferedWaveProvider(new WaveFormat(48000, 16, 1))
-            {
-                BufferDuration = TimeSpan.FromSeconds(5)
-            };
+            waveProvider = new BufferedWaveProvider(new WaveFormat(44100, 16, 1));
             waveOut = new WaveOutEvent();
             waveOut.Init(waveProvider);
             waveOut.Play();
             StartReceiving(portAudioDown);
         }
-
-        private static void StartReceiving(UdpClient port)
-        {
-            while (true)
-            {
-                // Receive the encoded Opus data
-                byte[] receivedData = port.Receive(ref peer);
-
-                // Decode the Opus data back to PCM
-                short[] pcmData = DecodeOpusToPCM(receivedData);
-                if (pcmData != null)
-                {
-                    // Convert PCM data (short[]) back to byte[] for playback
-                    byte[] pcmBytes = new byte[pcmData.Length * 2]; // 2 bytes per sample
-                    Buffer.BlockCopy(pcmData, 0, pcmBytes, 0, pcmBytes.Length);
-
-                    // Add PCM data to NAudio's buffer for playback
-                    waveProvider.AddSamples(pcmBytes, 0, pcmBytes.Length);
-                }
-            }
-        }
-        /*
         private static void StartReceiving(UdpClient port)
         {
             port.BeginReceive((ar) => OnDataReceived(ar, port), null);
@@ -518,29 +460,7 @@ namespace ConferencingClient
         {
             byte[] receivedBytes = port.EndReceive(ar, ref peer);
             waveProvider.AddSamples(receivedBytes, 0, receivedBytes.Length);
-            receivedBytes = null;
             StartReceiving(port);
-        }
-        */
-        
-        private static short[] DecodeOpusToPCM(byte[] encodedData)
-        {
-            // Create a buffer to hold the decoded PCM data
-            short[] pcmSamples = new short[48000]; // Allocate enough space for 1 second of audio (48k samples for mono)
-
-            // Decode Opus data into PCM format
-            int decodedSamples = opusDecoder.Decode(encodedData, 0, encodedData.Length, pcmSamples, 0, pcmSamples.Length, false);
-
-            if (decodedSamples > 0)
-            {
-                // Return only the decoded samples
-                return pcmSamples[..decodedSamples];
-            }
-            else
-            {
-                Console.WriteLine("Failed to decode Opus audio.");
-                return null;
-            }
         }
         private void VideoDown(object sender, RoutedEventArgs e)
         {
