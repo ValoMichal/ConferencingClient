@@ -64,9 +64,9 @@ namespace ConferencingClient
         private VideoCaptureDevice videoSource;
         private static int chunkSize = 65000;
         private int id = 0;
-        private String server = new String("");
-        private static IPEndPoint peer = new IPEndPoint(IPAddress.Any, 0);
-        UdpClient connect = new UdpClient(5000);
+        private String host = new String("");
+        private static IPEndPoint server = new IPEndPoint(IPAddress.Any, 0);
+        UdpClient comms = new UdpClient(5000);
         UdpClient portChatUp = new UdpClient(5001);
         UdpClient portAudioUp = new UdpClient(5002);
         UdpClient portVideoUp = new UdpClient(5003);
@@ -183,7 +183,7 @@ namespace ConferencingClient
         private void VideoSource_NewFrame(object sender, AForge.Video.NewFrameEventArgs eventArgs)
         {
             //
-            if (server.Equals(""))
+            if (host.Equals(""))
             {
                 if (camMute)
                 {
@@ -278,7 +278,7 @@ namespace ConferencingClient
         private void Connect(object sender, RoutedEventArgs e)
         {
             Settings.Visibility = Visibility.Collapsed;
-            server = ip.Text;
+            host = ip.Text;
             Task.Run(() =>
             {
                 try
@@ -288,14 +288,14 @@ namespace ConferencingClient
                     output.Add(Username.Text);
                     string sendText = string.Join(Environment.NewLine, output);
                     byte[] sendBytes = Encoding.ASCII.GetBytes(sendText);
-                    connect.Send(sendBytes, sendBytes.Length, server, 5000);
+                    comms.Send(sendBytes, sendBytes.Length, host, 5000);
                     output.Clear();
-                    //connect.Client.ReceiveTimeout = 2500;
-                    byte[] recvBytes = connect.Receive(ref peer);
+                    //comms.Client.ReceiveTimeout = 2500;
+                    byte[] recvBytes = comms.Receive(ref server);
                     string recvText = Encoding.ASCII.GetString(recvBytes);
                     List<string> input = new List<string>(recvText.Split(new[] { Environment.NewLine }, StringSplitOptions.None));
                     id = Int32.Parse(input[0]);
-                    //peer.Port.ToString()
+                    //server.Port.ToString()
                     this.Dispatcher.Invoke(() =>
                     {
                         ChatAdd(sender, e, "Connected.");
@@ -343,9 +343,9 @@ namespace ConferencingClient
             output.Add(Username.Text);
             string sendText = string.Join(Environment.NewLine, output);
             byte[] sendBytes = Encoding.ASCII.GetBytes(sendText);
-            connect.Send(sendBytes, sendBytes.Length, server, 5000);
+            comms.Send(sendBytes, sendBytes.Length, host, 5000);
             output.Clear();
-            connect.Receive(ref peer);
+            comms.Receive(ref server);
         }
         private void ChatAdd(object sender, RoutedEventArgs e, String msg)
         {
@@ -366,7 +366,7 @@ namespace ConferencingClient
                 string sendText = Msg.Text;
                 Msg.Text = "";
                 byte[] sendBytes = Encoding.ASCII.GetBytes(sendText);
-                portChatUp.Send(sendBytes, sendBytes.Length, server, 5001 + 3 * id);
+                portChatUp.Send(sendBytes, sendBytes.Length, host, 5001 + 3 * id);
             }
             catch (Exception ex)
             {
@@ -390,9 +390,9 @@ namespace ConferencingClient
         }
         private void WaveIn_DataAvailable(object sender, WaveInEventArgs e, UdpClient port)
         {
-            if (!micMute&&!server.Equals(""))
+            if (!micMute&&!host.Equals(""))
             {
-                port.Send(e.Buffer, e.BytesRecorded, server, 5002 + 3 * id);
+                port.Send(e.Buffer, e.BytesRecorded, host, 5002 + 3 * id);
             }
         }
         private void VideoUp(object sender, AForge.Video.NewFrameEventArgs eventArgs)
@@ -423,7 +423,7 @@ namespace ConferencingClient
                     Array.Copy(buffer, i * chunkSize, chunk, 4, currentChunkSize);
                     try
                     {
-                        portVideoUp.Send(chunk, chunk.Length, server, 5003 + 3 * id);
+                        portVideoUp.Send(chunk, chunk.Length, host, 5003 + 3 * id);
                     }
                     catch (Exception ex)
                     {
@@ -438,7 +438,7 @@ namespace ConferencingClient
             {
                 try
                 {
-                    byte[] recvBytes = portChatDown.Receive(ref peer);
+                    byte[] recvBytes = portChatDown.Receive(ref server);
                     string recvText = Encoding.ASCII.GetString(recvBytes);
                     this.Dispatcher.Invoke(() =>
                     {
@@ -465,7 +465,7 @@ namespace ConferencingClient
         }
         private static void OnDataReceived(IAsyncResult ar, UdpClient port)
         {
-            byte[] receivedBytes = port.EndReceive(ar, ref peer);
+            byte[] receivedBytes = port.EndReceive(ar, ref server);
             waveProvider.AddSamples(receivedBytes, 0, receivedBytes.Length);
             StartReceiving(port);
         }
@@ -474,7 +474,7 @@ namespace ConferencingClient
             Dictionary<int, byte[]> receivedChunks = new Dictionary<int, byte[]>();
             try
             {
-                byte[] data = portVideoDown.Receive(ref peer);
+                byte[] data = portVideoDown.Receive(ref server);
                 int chunkIndex = BitConverter.ToInt32(data, 0);
                 byte[] chunkData = new byte[data.Length - 4];
                 Array.Copy(data, 4, chunkData, 0, chunkData.Length);
@@ -482,7 +482,7 @@ namespace ConferencingClient
                 //Debug.WriteLine($"received chunk {chunkIndex}");
                 while (true)
                 {
-                    data = portVideoDown.Receive(ref peer);
+                    data = portVideoDown.Receive(ref server);
                     chunkIndex = BitConverter.ToInt32(data, 0);
                     if (chunkIndex == 0)
                     {
