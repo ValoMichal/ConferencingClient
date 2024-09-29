@@ -339,7 +339,7 @@ namespace ConferencingClient
         private void ChangeName(object sender, RoutedEventArgs e)
         {
             List<String> output = new List<String>();
-            output.Add("changeName");
+            output.Add("rename");
             output.Add(Username.Text);
             string sendText = string.Join(Environment.NewLine, output);
             byte[] sendBytes = Encoding.ASCII.GetBytes(sendText);
