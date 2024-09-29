@@ -201,11 +201,18 @@ namespace ConferencingClient
                 else
                 {
                     Bitmap newFrame = (Bitmap)eventArgs.Frame.Clone();
-                    this.Dispatcher.Invoke(() =>
+                    try
                     {
-                        Display.Source = Utils.BitmapToImageSource(newFrame);
+                        this.Dispatcher.Invoke(() =>
+                        {
+                            Display.Source = Utils.BitmapToImageSource(newFrame);
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine(ex);
                         Environment.Exit(Environment.ExitCode);
-                    });
+                    }
                 }
             }
             else
