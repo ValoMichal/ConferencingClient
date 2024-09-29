@@ -366,7 +366,7 @@ namespace ConferencingClient
                 string sendText = Msg.Text;
                 Msg.Text = "";
                 byte[] sendBytes = Encoding.ASCII.GetBytes(sendText);
-                portChatUp.Send(sendBytes, sendBytes.Length, host, 5001 + 3 * id);
+                portChatUp.Send(sendBytes, sendBytes.Length, host, 5001 + 6 * id);
             }
             catch (Exception ex)
             {
@@ -392,7 +392,7 @@ namespace ConferencingClient
         {
             if (!micMute&&!host.Equals(""))
             {
-                port.Send(e.Buffer, e.BytesRecorded, host, 5002 + 3 * id);
+                port.Send(e.Buffer, e.BytesRecorded, host, 5002 + 6 * id);
             }
         }
         private void VideoUp(object sender, AForge.Video.NewFrameEventArgs eventArgs)
@@ -423,7 +423,7 @@ namespace ConferencingClient
                     Array.Copy(buffer, i * chunkSize, chunk, 4, currentChunkSize);
                     try
                     {
-                        portVideoUp.Send(chunk, chunk.Length, host, 5003 + 3 * id);
+                        portVideoUp.Send(chunk, chunk.Length, host, 5003 + 6 * id);
                     }
                     catch (Exception ex)
                     {
